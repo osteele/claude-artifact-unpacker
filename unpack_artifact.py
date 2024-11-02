@@ -19,6 +19,7 @@ from time import sleep
 import re
 import tomli
 from configparser import ConfigParser
+import argparse
 
 console = Console()
 
@@ -186,37 +187,38 @@ def process_input(input_stream) -> list[tuple[str, str]]:
 
     return files_to_process
 
-def create_project(files):
+def create_project(files, project_name=None):
     """Create project directory and all files."""
     if not files:
         console.print("[red]No files to process!", style="bold")
         return
 
-    # Look for config files in priority order
-    config_files = {
-        'package.json': None,
-        'Cargo.toml': None,
-        'pyproject.toml': None,
-        'setup.py': None,
-        'go.mod': None
-    }
-
-    # Find first available config file
-    for filepath, content in files:
-        if filepath in config_files:
-            config_files[filepath] = content
-            break
-
-    # Get project name from first found config file
-    project_name = None
-    for filepath, content in config_files.items():
-        if content is not None:
-            project_name = find_project_name(content, filepath)
-            break
-
-    # Fall back to default if no config files found
+    # Only look for config files if project_name wasn't specified
     if project_name is None:
-        project_name = generate_default_name()
+        # Look for config files in priority order
+        config_files = {
+            'package.json': None,
+            'Cargo.toml': None,
+            'pyproject.toml': None,
+            'setup.py': None,
+            'go.mod': None
+        }
+
+        # Find first available config file
+        for filepath, content in files:
+            if filepath in config_files:
+                config_files[filepath] = content
+                break
+
+        # Get project name from first found config file
+        for filepath, content in config_files.items():
+            if content is not None:
+                project_name = find_project_name(content, filepath)
+                break
+
+        # Fall back to default if no config files found
+        if project_name is None:
+            project_name = generate_default_name()
 
     # Create a tree visualization
     tree = Tree(f"[bold green]📁 {project_name}")
@@ -266,18 +268,23 @@ def create_project(files):
     console.print(Panel.fit(tree, title="Project Structure", border_style="green"))
 
 def main():
-    console = Console()  # Regular console for stdout
-    error_console = Console(stderr=True)  # Error console for stderr
+    console = Console()
+    error_console = Console(stderr=True)
+
+    # Add argument parsing
+    parser = argparse.ArgumentParser(description='Project Generator')
+    parser.add_argument('files', nargs='*', help='Input files to process')
+    parser.add_argument('--name', help='Specify the project directory name')
+    args = parser.parse_args()
 
     console.print("[bold blue]🚀 Project Generator[/bold blue]")
 
     try:
-        # Collect all files to process
         all_files = []
 
-        if len(sys.argv) > 1:
+        if args.files:
             # Process each input file provided as argument
-            for input_file in sys.argv[1:]:
+            for input_file in args.files:
                 try:
                     with open(input_file, 'r') as f:
                         console.print(f"[cyan]Processing input file: {input_file}")
@@ -296,7 +303,7 @@ def main():
             error_console.print("\n[red]❌ Error: No files to process[/red]")
             sys.exit(1)
 
-        create_project(all_files)
+        create_project(all_files, project_name=args.name)
 
     except KeyboardInterrupt:
         error_console.print("\n[red]⛔ Process interrupted by user[/red]")

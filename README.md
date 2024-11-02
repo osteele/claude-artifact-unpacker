@@ -38,6 +38,62 @@ my-react-app/
     └── App.jsx
 ```
 
+**Scenario 2: Handling Placeholder Content**
+When Claude generates a project with some placeholder sections:
+```text
+// src/components/Header.jsx
+export function Header() {
+  return <header>Site Header</header>
+}
+
+// src/components/Footer.jsx
+// [Insert footer component from design system]
+
+// src/styles/theme.css
+// [Copy theme variables from Figma]
+```
+
+The tool creates the files and reminds you which content needs to be filled in:
+```text
+🟡 Warning: Placeholder content found in src/components/Footer.jsx
+🟡 Warning: Placeholder content found in src/styles/theme.css
+```
+
+**Scenario 3: Multi-Part Project Generation**
+When you're working with Claude iteratively and getting different parts of your project:
+
+First conversation:
+```text
+// src/components/auth/Login.jsx
+export function Login() { /* ... */ }
+
+// src/components/auth/Register.jsx
+export function Register() { /* ... */ }
+```
+
+Second conversation:
+```text
+// src/api/authService.js
+export class AuthService { /* ... */ }
+
+// src/store/authStore.js
+export const authStore = { /* ... */ }
+```
+
+Run the tool on both outputs, and it combines them into a single project structure:
+```text
+my-project/
+├── src/
+│   ├── components/
+│   │   └── auth/
+│   │       ├── Login.jsx
+│   │       └── Register.jsx
+│   ├── api/
+│   │   └── authService.js
+│   └── store/
+│       └── authStore.js
+```
+
 ## Features ✨
 
 - 📁 Creates nested directory structures automatically
@@ -71,6 +127,9 @@ my-react-app/
 cat input_file.txt | ./unpack_artifact.py
 # or
 ./unpack_artifact.py < input_file.txt
+
+# Specify a project name:
+./unpack_artifact.py --name my-project input_file.txt
 ```
 
 When processing multiple input files, all files will be unpacked into the same
