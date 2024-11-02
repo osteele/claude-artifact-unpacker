@@ -1,8 +1,42 @@
-# Project Generator 🚀
+# Claude Artifact Unpacker 🚀
 
-A Python script that generates project directories from a simple text-based
-specification. It creates directories and files based on a straightforward input
-format, making it easy to scaffold new projects or recreate project structures.
+A Python script designed to unpack and organize multi-file projects from
+Claude's Artifacts feature. When Claude generates multiple files in a single
+Artifact (like a complete project structure), this tool helps you extract and
+create those files locally with the correct directory structure.
+
+## Why This Tool? 🤔
+
+When working with [Claude's Artifacts
+feature](https://www.anthropic.com/news/artifacts), you might receive multiple
+files in a single output - for example, a complete React project with
+package.json, component files, and configuration. This tool makes it easy to
+take that output and create a working local project structure.
+
+### Common Scenarios 📋
+
+**Scenario 1: Unpacking a Generated Project**
+Claude gives you a complete project structure in an Artifact:
+```text
+// package.json
+{
+  "name": "my-react-app",
+  "version": "1.0.0"
+}
+
+// src/App.jsx
+function App() {
+  return <div>Hello World</div>;
+}
+```
+
+Run this tool, and it automatically creates the files in their correct locations:
+```text
+my-react-app/
+├── package.json
+└── src/
+    └── App.jsx
+```
 
 ## Features ✨
 
@@ -19,7 +53,7 @@ format, making it easy to scaffold new projects or recreate project structures.
 2. [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
 3. Download the script and make it executable:
    ```bash
-   chmod +x claude_project_unpacker.py
+   chmod +x unpack_artifact.py
    ```
 
 ## Usage
@@ -28,12 +62,12 @@ format, making it easy to scaffold new projects or recreate project structures.
 
 ```bash
 # From a file:
-./claude_project_unpacker.py input_file.txt
+./unpack_artifact.py input_file.txt
 
 # From standard input:
-cat input_file.txt | ./claude_project_unpacker.py
+cat input_file.txt | ./unpack_artifact.py
 # or
-./claude_project_unpacker.py < input_file.txt
+./unpack_artifact.py < input_file.txt
 ```
 
 ### Input Format

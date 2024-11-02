@@ -6,7 +6,7 @@ import pytest
 
 TEST_INPUTS_DIR = Path("tests/test_inputs")
 TEST_OUTPUT_DIR = Path("tests/test_output")
-SCRIPT_PATH = Path(__file__).parent.parent / "claude_project_unpacker.py"
+SCRIPT_PATH = Path(__file__).parent.parent / "unpack_artifact.py"
 
 def setup_module():
     """Create output directory before tests"""

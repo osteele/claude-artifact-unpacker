@@ -1,4 +1,4 @@
-# Claude Project Unpacker Specification
+# Claude Artifact Unpacker Specification
 
 ## 1. Input Format
 

@@ -1,4 +1,4 @@
-# Claude Project Unpacker Technical Documentation
+# Claude Artifact Unpacker Technical Documentation
 
 ## Architecture Overview
 
