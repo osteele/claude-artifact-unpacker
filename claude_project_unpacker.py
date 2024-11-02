@@ -55,28 +55,31 @@ def process_input(input_stream):
 
             # Check for new file marker
             if line.startswith('// '):
+                content = line[3:]  # Remove the '// ' prefix
+
+                # If this is a placeholder for the previous file
+                if content.startswith('[') and content.endswith(']'):
+                    if current_file:
+                        files_to_process.append((current_file, content))
+                        current_file = None
+                        current_content = []
+                    continue
+
                 # Save previous file if exists
                 if current_file:
-                    files_to_process.append((current_file, '\n'.join(current_content)))
+                    files_to_process.append((current_file, '\n'.join(current_content) if current_content else ''))
                     current_content = []
 
-                current_file = line[3:]  # Remove the '// ' prefix
+                current_file = content
                 progress.update(task, description=f"[cyan]Found file: {current_file}")
                 sleep(0.1)  # Add a small delay for visual effect
-
-                # Handle placeholder content marker
-                if current_file.startswith('[') and current_content:
-                    # This is a placeholder marker for the previous file
-                    files_to_process.append((files_to_process.pop()[0], line[3:]))
-                    current_file = None
-                    continue
 
             elif current_file:
                 current_content.append(line)
 
         # Don't forget the last file
-        if current_file and current_content:
-            files_to_process.append((current_file, '\n'.join(current_content)))
+        if current_file:
+            files_to_process.append((current_file, '\n'.join(current_content) if current_content else ''))
 
     return files_to_process
 
@@ -140,13 +143,20 @@ def create_project(files):
     console.print(Panel.fit(tree, title="Project Structure", border_style="green"))
 
 def main():
+    console = Console()  # Regular console for stdout
+    error_console = Console(stderr=True)  # Error console for stderr
+
     console.print("[bold blue]🚀 Project Generator[/bold blue]")
 
     try:
         # Read from file if specified, otherwise from stdin
         if len(sys.argv) > 1:
-            with open(sys.argv[1], 'r') as f:
-                files = process_input(f)
+            try:
+                with open(sys.argv[1], 'r') as f:
+                    files = process_input(f)
+            except FileNotFoundError:
+                error_console.print(f"\n[red]❌ Error: Input file not found: {sys.argv[1]}[/red]")
+                sys.exit(1)
         else:
             console.print("[yellow]Reading from standard input (Ctrl+D to finish)...")
             files = process_input(sys.stdin)
@@ -154,10 +164,10 @@ def main():
         create_project(files)
 
     except KeyboardInterrupt:
-        console.print("\n[red]⛔ Process interrupted by user[/red]")
+        error_console.print("\n[red]⛔ Process interrupted by user[/red]")
         sys.exit(1)
     except Exception as e:
-        console.print(f"\n[red]❌ Error: {str(e)}[/red]")
+        error_console.print(f"\n[red]❌ Error: {str(e)}[/red]")
         sys.exit(1)
 
 if __name__ == '__main__':

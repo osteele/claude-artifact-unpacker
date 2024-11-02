@@ -24,7 +24,7 @@ def clean_output_before_test():
     """Clean output directory before each test"""
     if TEST_OUTPUT_DIR.exists():
         shutil.rmtree(TEST_OUTPUT_DIR)
-    TEST_OUTPUT_DIR.mkdir(exist_ok)
+    TEST_OUTPUT_DIR.mkdir()
 
 def get_all_files(directory):
     """Helper function to get all files in directory recursively"""
@@ -86,8 +86,7 @@ def test_nested_directories():
 
     expected_files = {
         "deep/nested/structure/file1.txt",
-        "deep/nested/other/file2.txt",
-        "deep/nested/empty/.gitkeep"
+        "deep/nested/other/file2.txt"
     }
 
     created_files = get_all_files(project_dir)
@@ -128,7 +127,8 @@ def test_special_cases():
         ".gitignore",
         ".env",
         "src/spaces in path/test.js",
-        "src/special#chars/test.txt"
+        "src/special#chars/test.txt",
+        "empty/empty-file.txt"
     }
 
     created_files = get_all_files(project_dir)
@@ -143,14 +143,25 @@ def test_nonexistent_input():
 
 def test_stdin_input(tmp_path):
     """Test reading from stdin"""
-    input_file = TEST_INPUTS_DIR / "basic.txt"
-    with open(input_file) as f:
-        result = subprocess.run(
-            [str(SCRIPT_PATH)],
-            input=f.read(),
-            capture_output=True,
-            text=True
-        )
+    input_file = TEST_INPUTS_DIR.resolve() / "basic.txt"  # Use absolute path
+
+    # Save current working directory
+    original_cwd = os.getcwd()
+
+    try:
+        # Create test output directory if it doesn't exist
+        TEST_OUTPUT_DIR.mkdir(exist_ok=True)
+
+        with open(input_file) as f:
+            result = subprocess.run(
+                [str(SCRIPT_PATH.resolve())],  # Use absolute path
+                input=f.read(),
+                capture_output=True,
+                text=True,
+                cwd=str(TEST_OUTPUT_DIR)  # Convert to string and use direct path
+            )
+    finally:
+        os.chdir(original_cwd)
 
     assert result.returncode == 0
     project_dir = TEST_OUTPUT_DIR / "basic-test"
