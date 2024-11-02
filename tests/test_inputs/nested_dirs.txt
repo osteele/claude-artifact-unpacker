@@ -1,0 +1,7 @@
+// deep/nested/structure/file1.txt
+This tests deep directory creation
+
+// deep/nested/other/file2.txt
+Testing parallel deep directories
+
+// deep/nested/empty/.gitkeep

@@ -1,0 +1,13 @@
+// package.json
+{
+  "name": "basic-test",
+  "version": "1.0.0",
+  "description": "Basic test case"
+}
+
+// README.md
+# Basic Test
+Testing basic file creation
+
+// src/index.js
+console.log('Hello from basic test');

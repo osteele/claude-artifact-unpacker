@@ -1,0 +1,13 @@
+// src/components/Header.jsx
+export function Header() {
+  return <header>Test Header</header>
+}
+
+// src/components/Footer.jsx
+// [Insert footer component here]
+
+// src/components/Sidebar.jsx
+// [Copy from design system]
+
+// src/data/config.json
+// [Add production configuration]

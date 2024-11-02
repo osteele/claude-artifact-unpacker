@@ -1,0 +1,13 @@
+// .gitignore
+node_modules/
+*.log
+
+// .env
+API_KEY=[Insert your API key]
+SECRET_KEY=[Add secret key]
+
+// src/spaces in path/test.js
+// Testing files with spaces in path
+
+// src/special#chars/test.txt
+// Testing special characters in path
