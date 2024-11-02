@@ -149,19 +149,31 @@ def main():
     console.print("[bold blue]🚀 Project Generator[/bold blue]")
 
     try:
-        # Read from file if specified, otherwise from stdin
+        # Collect all files to process
+        all_files = []
+
         if len(sys.argv) > 1:
-            try:
-                with open(sys.argv[1], 'r') as f:
-                    files = process_input(f)
-            except FileNotFoundError:
-                error_console.print(f"\n[red]❌ Error: Input file not found: {sys.argv[1]}[/red]")
-                sys.exit(1)
+            # Process each input file provided as argument
+            for input_file in sys.argv[1:]:
+                try:
+                    with open(input_file, 'r') as f:
+                        console.print(f"[cyan]Processing input file: {input_file}")
+                        files = process_input(f)
+                        all_files.extend(files)
+                except FileNotFoundError:
+                    error_console.print(f"\n[red]❌ Error: Input file not found: {input_file}[/red]")
+                    sys.exit(1)
         else:
+            # No arguments - read from stdin
             console.print("[yellow]Reading from standard input (Ctrl+D to finish)...")
             files = process_input(sys.stdin)
+            all_files.extend(files)
 
-        create_project(files)
+        if not all_files:
+            error_console.print("\n[red]❌ Error: No files to process[/red]")
+            sys.exit(1)
+
+        create_project(all_files)
 
     except KeyboardInterrupt:
         error_console.print("\n[red]⛔ Process interrupted by user[/red]")

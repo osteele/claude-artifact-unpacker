@@ -61,14 +61,22 @@ my-react-app/
 ### Basic Usage
 
 ```bash
-# From a file:
+# From a single file:
 ./unpack_artifact.py input_file.txt
+
+# From multiple files:
+./unpack_artifact.py input1.txt input2.txt input3.txt
 
 # From standard input:
 cat input_file.txt | ./unpack_artifact.py
 # or
 ./unpack_artifact.py < input_file.txt
 ```
+
+When processing multiple input files, all files will be unpacked into the same
+project directory. The project name will be determined from the first
+package.json found in any of the input files, or will fall back to the default
+naming scheme.
 
 ### Input Format
 
