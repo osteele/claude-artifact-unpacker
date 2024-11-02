@@ -3,6 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "rich",
+#     "tomli",
 # ]
 # ///
 
@@ -15,21 +16,99 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.tree import Tree
 from rich import print as rprint
 from time import sleep
+import re
+import tomli
+from configparser import ConfigParser
 
 console = Console()
 
-def find_project_name(package_content):
-    """Extract project name from package.json content or generate a default name."""
+def extract_name_from_cargo_toml(content: str) -> str | None:
+    """Extract project name from Cargo.toml"""
     try:
-        # Very basic JSON parsing - for more robust handling, use json module
-        for line in package_content.split('\n'):
-            if '"name"' in line:
-                name = line.split(':')[1].strip().strip('",')
-                return name
+        data = tomli.loads(content)
+        if 'package' in data and 'name' in data['package']:
+            return data['package']['name']
     except:
-        pass
+        # Fall back to simple parsing if tomli fails
+        for line in content.split('\n'):
+            if line.strip().startswith('name = '):
+                # Extract value between quotes
+                match = re.search(r'name\s*=\s*"([^"]+)"', line)
+                if match:
+                    return match.group(1)
+    return None
 
-    # If we can't find/parse a name, generate one
+def extract_name_from_pyproject(content: str) -> str | None:
+    """Extract project name from pyproject.toml"""
+    try:
+        data = tomli.loads(content)
+        # Check poetry section first
+        if 'tool' in data and 'poetry' in data['tool']:
+            return data['tool']['poetry'].get('name')
+        # Check project section
+        if 'project' in data:
+            return data['project'].get('name')
+    except:
+        return None
+    return None
+
+def extract_name_from_setup_py(content: str) -> str | None:
+    """Extract project name from setup.py"""
+    # Look for name parameter in setup() call
+    match = re.search(r'setup\s*\([^)]*name\s*=\s*["\']([^"\']+)["\']', content)
+    if match:
+        return match.group(1)
+    return None
+
+def extract_name_from_go_mod(content: str) -> str | None:
+    """Extract project name from go.mod"""
+    # First line should be module name
+    first_line = content.split('\n')[0].strip()
+    if first_line.startswith('module '):
+        # Get last part of module path as project name
+        module_path = first_line[7:].strip()
+        return module_path.split('/')[-1]
+    return None
+
+def find_project_name(package_content: str, filepath: str = '') -> str:
+    """Extract project name from various config files or generate default."""
+
+    # Try to extract name based on file type
+    name = None
+
+    if filepath.endswith('package.json'):
+        try:
+            for line in package_content.split('\n'):
+                if '"name"' in line:
+                    name = line.split(':')[1].strip().strip('",')
+                    break
+        except:
+            pass
+
+    elif filepath.endswith('Cargo.toml'):
+        name = extract_name_from_cargo_toml(package_content)
+
+    elif filepath.endswith('pyproject.toml'):
+        name = extract_name_from_pyproject(package_content)
+
+    elif filepath.endswith('setup.py'):
+        name = extract_name_from_setup_py(package_content)
+
+    elif filepath.endswith('go.mod'):
+        name = extract_name_from_go_mod(package_content)
+
+    # If we found a name, sanitize it
+    if name:
+        # Remove invalid characters, replace with dashes
+        name = re.sub(r'[^\w\-\.]', '-', name)
+        # Remove leading/trailing dashes
+        name = name.strip('-')
+        return name if name else generate_default_name()
+
+    return generate_default_name()
+
+def generate_default_name() -> str:
+    """Generate a default project name if none found."""
     base_name = "project"
     i = 1
     while os.path.exists(base_name):
@@ -113,11 +192,31 @@ def create_project(files):
         console.print("[red]No files to process!", style="bold")
         return
 
-    # Get project name from first file if it's package.json
-    if files[0][0] == 'package.json':
-        project_name = find_project_name(files[0][1])
-    else:
-        project_name = find_project_name("")
+    # Look for config files in priority order
+    config_files = {
+        'package.json': None,
+        'Cargo.toml': None,
+        'pyproject.toml': None,
+        'setup.py': None,
+        'go.mod': None
+    }
+
+    # Find first available config file
+    for filepath, content in files:
+        if filepath in config_files:
+            config_files[filepath] = content
+            break
+
+    # Get project name from first found config file
+    project_name = None
+    for filepath, content in config_files.items():
+        if content is not None:
+            project_name = find_project_name(content, filepath)
+            break
+
+    # Fall back to default if no config files found
+    if project_name is None:
+        project_name = generate_default_name()
 
     # Create a tree visualization
     tree = Tree(f"[bold green]📁 {project_name}")

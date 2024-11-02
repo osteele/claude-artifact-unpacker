@@ -75,8 +75,8 @@ cat input_file.txt | ./unpack_artifact.py
 
 When processing multiple input files, all files will be unpacked into the same
 project directory. The project name will be determined from the first
-package.json found in any of the input files, or will fall back to the default
-naming scheme.
+package.json, Cargo.toml, pyproject.toml, setup.py, or go.mod found in any of
+the input files, or will fall back to the default naming scheme.
 
 ### Input Format
 

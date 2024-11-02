@@ -7,7 +7,7 @@ from io import StringIO
 
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from unpack_artifact import process_input
+from unpack_artifact import process_input, find_project_name
 
 SCRIPT_PATH = Path(__file__).parent.parent / "unpack_artifact.py"
 
@@ -256,3 +256,69 @@ console.log('hello');
     assert set(name for name, _ in files) == {"README.md", "src/index.js"}
     assert files[0] == ("README.md", "# My Project Title\nThis is a markdown file with headers.\n# Another Header\n## Subheader")
     assert files[1] == ("src/index.js", "console.log('hello');")
+
+def test_project_name_from_various_configs():
+    """Test project name extraction from different config files"""
+
+    # Test Cargo.toml
+    cargo_input = """[package]
+name = "rust-project"
+version = "0.1.0"
+"""
+    assert find_project_name(cargo_input, "Cargo.toml") == "rust-project"
+
+    # Test pyproject.toml with poetry
+    pyproject_input = """[tool.poetry]
+name = "python-project"
+version = "0.1.0"
+"""
+    assert find_project_name(pyproject_input, "pyproject.toml") == "python-project"
+
+    # Test setup.py
+    setup_input = """
+from setuptools import setup
+
+setup(
+    name="python-setup-project",
+    version="0.1.0",
+)
+"""
+    assert find_project_name(setup_input, "setup.py") == "python-setup-project"
+
+    # Test go.mod
+    go_input = """module github.com/user/go-project
+go 1.16
+"""
+    assert find_project_name(go_input, "go.mod") == "go-project"
+
+def test_project_name_sanitization():
+    """Test that project names are properly sanitized"""
+    # Test with package.json
+    input_with_spaces = '{"name": "my project name"}'
+    assert find_project_name(input_with_spaces, "package.json") == "my-project-name"
+
+    # Test with Cargo.toml
+    cargo_with_invalid = """[package]
+name = "rust@project!"
+"""
+    assert find_project_name(cargo_with_invalid, "Cargo.toml") == "rust-project"
+
+def test_project_name_priority():
+    """Test that config files are checked in the correct priority order"""
+    files = [
+        ("go.mod", "module github.com/user/go-project"),
+        ("package.json", '{"name": "npm-project"}'),
+        ("Cargo.toml", '[package]\nname = "rust-project"'),
+    ]
+
+    # First file in priority list should be used
+    result = subprocess.run(
+        [str(SCRIPT_PATH)],
+        input="\n".join(f"// {path}\n{content}\n" for path, content in files),
+        capture_output=True,
+        text=True,
+        cwd=str(TEST_OUTPUT_DIR)
+    )
+
+    assert result.returncode == 0
+    assert os.path.exists(TEST_OUTPUT_DIR / "go-project")
