@@ -1,6 +1,8 @@
 # Project Generator 🚀
 
-A Python script that generates project directories from a simple text-based specification. It creates directories and files based on a straightforward input format, making it easy to scaffold new projects or recreate project structures.
+A Python script that generates project directories from a simple text-based
+specification. It creates directories and files based on a straightforward input
+format, making it easy to scaffold new projects or recreate project structures.
 
 ## Features ✨
 
@@ -8,14 +10,16 @@ A Python script that generates project directories from a simple text-based spec
 - 📝 Handles multiple files and their contents in a single input
 - 🎯 Extracts project name from package.json or generates sensible defaults
 - 🔄 Reads from files or standard input
+- 🎨 Beautiful visual feedback with progress indicators and tree views
 - ⚠️ Handles placeholder content with helpful reminders
 
 ## Installation
 
 1. Ensure you have Python 3.6+ installed
-2. Download the script and make it executable:
+2. [Install uv](https://docs.astral.sh/uv/getting-started/installation/)
+3. Download the script and make it executable:
    ```bash
-   chmod +x project_generator.py
+   chmod +x claude_project_unpacker.py
    ```
 
 ## Usage
@@ -24,12 +28,12 @@ A Python script that generates project directories from a simple text-based spec
 
 ```bash
 # From a file:
-./project_generator.py input_file.txt
+./claude_project_unpacker.py input_file.txt
 
 # From standard input:
-cat input_file.txt | ./project_generator.py
+cat input_file.txt | ./claude_project_unpacker.py
 # or
-./project_generator.py < input_file.txt
+./claude_project_unpacker.py < input_file.txt
 ```
 
 ### Input Format
@@ -90,6 +94,15 @@ my-awesome-project/
    - Creates the file with the placeholder text
    - Prints a reminder to replace the placeholder content
 
+4. **Visual Feedback**
+   - Shows real-time progress with spinning indicators
+   - Displays a tree view of the created project structure
+   - Uses color-coding for different types of messages:
+     - 🔵 Blue: Processing information
+     - 🟢 Green: Success messages
+     - 🟡 Yellow: Warnings and placeholders
+     - 🔴 Red: Errors
+
 ## Examples
 
 ### Basic Project Structure
@@ -147,4 +160,6 @@ This project is MIT licensed. Feel free to use it as you wish!
 
 ---
 
-Made with ❤️ using Python
+Made with ❤️ using Python 🐍 and [rich](https://github.com/Textualize/rich) 🌈
+
+Written with [Claude](https://www.anthropic.com/claude) 🤖 and [Cursor](https://www.cursor.com) ✨

@@ -1,8 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "rich",
+# ]
+# ///
 
 import sys
 import os
 from pathlib import Path
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.tree import Tree
+from rich import print as rprint
+from time import sleep
+
+console = Console()
 
 def find_project_name(package_content):
     """Extract project name from package.json content or generate a default name."""
@@ -29,38 +43,47 @@ def process_input(input_stream):
     current_content = []
     files_to_process = []
 
-    for line in input_stream:
-        line = line.rstrip('\n')
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("[cyan]Processing input...", total=None)
 
-        # Check for new file marker
-        if line.startswith('// '):
-            # Save previous file if exists
-            if current_file:
-                files_to_process.append((current_file, '\n'.join(current_content)))
-                current_content = []
+        for line in input_stream:
+            line = line.rstrip('\n')
 
-            current_file = line[3:]  # Remove the '// ' prefix
+            # Check for new file marker
+            if line.startswith('// '):
+                # Save previous file if exists
+                if current_file:
+                    files_to_process.append((current_file, '\n'.join(current_content)))
+                    current_content = []
 
-            # Handle placeholder content marker
-            if current_file.startswith('[') and current_content:
-                # This is a placeholder marker for the previous file
-                files_to_process.append((files_to_process.pop()[0], line[3:]))
-                current_file = None
-                continue
+                current_file = line[3:]  # Remove the '// ' prefix
+                progress.update(task, description=f"[cyan]Found file: {current_file}")
+                sleep(0.1)  # Add a small delay for visual effect
 
-        elif current_file:
-            current_content.append(line)
+                # Handle placeholder content marker
+                if current_file.startswith('[') and current_content:
+                    # This is a placeholder marker for the previous file
+                    files_to_process.append((files_to_process.pop()[0], line[3:]))
+                    current_file = None
+                    continue
 
-    # Don't forget the last file
-    if current_file and current_content:
-        files_to_process.append((current_file, '\n'.join(current_content)))
+            elif current_file:
+                current_content.append(line)
+
+        # Don't forget the last file
+        if current_file and current_content:
+            files_to_process.append((current_file, '\n'.join(current_content)))
 
     return files_to_process
 
 def create_project(files):
     """Create project directory and all files."""
     if not files:
-        print("No files to process!")
+        console.print("[red]No files to process!", style="bold")
         return
 
     # Get project name from first file if it's package.json
@@ -69,36 +92,73 @@ def create_project(files):
     else:
         project_name = find_project_name("")
 
-    print(f"Creating project directory: {project_name}")
-    os.makedirs(project_name, exist_ok=True)
+    # Create a tree visualization
+    tree = Tree(f"[bold green]📁 {project_name}")
 
-    # Process each file
-    for filepath, content in files:
-        full_path = os.path.join(project_name, filepath)
-        directory = os.path.dirname(full_path)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task(f"[green]Creating project: {project_name}", total=len(files))
 
-        # Create necessary directories
-        os.makedirs(directory, exist_ok=True)
+        # Create project directory
+        os.makedirs(project_name, exist_ok=True)
 
-        # Write the file
-        with open(full_path, 'w') as f:
-            f.write(content)
+        # Process each file
+        current_branches = {}
+        for filepath, content in files:
+            progress.update(task, advance=1, description=f"[green]Creating: {filepath}")
+            sleep(0.2)  # Add a small delay for visual effect
 
-        # If content is a placeholder, notify user
-        if content.startswith('[') and content.endswith(']'):
-            print(f"Note: Please replace {content} in {full_path}")
-        else:
-            print(f"Created: {full_path}")
+            full_path = os.path.join(project_name, filepath)
+            directory = os.path.dirname(full_path)
+
+            # Create necessary directories
+            os.makedirs(directory, exist_ok=True)
+
+            # Update tree visualization
+            path_parts = filepath.split('/')
+            current_tree = tree
+            for i, part in enumerate(path_parts[:-1]):
+                current_path = '/'.join(path_parts[:i+1])
+                if current_path not in current_branches:
+                    current_branches[current_path] = current_tree.add(f"[bold blue]📁 {part}")
+                current_tree = current_branches[current_path]
+            current_tree.add(f"[bold yellow]📄 {path_parts[-1]}")
+
+            # Write the file
+            with open(full_path, 'w') as f:
+                f.write(content)
+
+            # If content is a placeholder, notify user
+            if content.startswith('[') and content.endswith(']'):
+                rprint(f"[yellow]⚠️  Note: Please replace {content} in {full_path}")
+
+    # Show the final tree structure
+    console.print("\n[bold green]✨ Project created successfully![/bold green]")
+    console.print(Panel.fit(tree, title="Project Structure", border_style="green"))
 
 def main():
-    # Read from file if specified, otherwise from stdin
-    if len(sys.argv) > 1:
-        with open(sys.argv[1], 'r') as f:
-            files = process_input(f)
-    else:
-        files = process_input(sys.stdin)
+    console.print("[bold blue]🚀 Project Generator[/bold blue]")
 
-    create_project(files)
+    try:
+        # Read from file if specified, otherwise from stdin
+        if len(sys.argv) > 1:
+            with open(sys.argv[1], 'r') as f:
+                files = process_input(f)
+        else:
+            console.print("[yellow]Reading from standard input (Ctrl+D to finish)...")
+            files = process_input(sys.stdin)
+
+        create_project(files)
+
+    except KeyboardInterrupt:
+        console.print("\n[red]⛔ Process interrupted by user[/red]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"\n[red]❌ Error: {str(e)}[/red]")
+        sys.exit(1)
 
 if __name__ == '__main__':
     main()
