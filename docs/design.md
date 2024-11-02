@@ -26,79 +26,57 @@ current_branches: dict[str, Tree]  # path -> tree_node
 
 ### Stream Parser State Machine
 
-The input parser implements a simple state machine with the following states:
+The input parser implements a simple state machine that handles both `//` and `#` style markers:
 
 ```python
-class ParserState:
-    AWAITING_FILE_MARKER = 1
-    COLLECTING_CONTENT = 2
+def is_file_marker(line: str) -> bool:
+    """Check if a line is a file marker using either # or // syntax."""
+    return (line.startswith('// ') or line.startswith('# ')) and not (
+        line.startswith('// [') or line.startswith('# [')
+    )
+
+def is_placeholder_marker(line: str) -> bool:
+    """Check if a line is a placeholder marker using either # or // syntax."""
+    return (line.startswith('// [') and line.endswith(']')) or (
+        line.startswith('# [') and line.endswith(']')
+    )
 ```
 
 The state transitions are:
 
 ```mermaid
 stateDiagram-v2
-    AWAITING_FILE_MARKER --> COLLECTING_CONTENT: See "// "
+    AWAITING_FILE_MARKER --> COLLECTING_CONTENT: See "// " or "# "
     COLLECTING_CONTENT --> AWAITING_FILE_MARKER: See blank line
     COLLECTING_CONTENT --> COLLECTING_CONTENT: Any other line
 ```
 
 ### Input Processing Phase
 
-The input processing phase is implemented in the `process_input` function, which handles several special cases:
+The input processing phase handles both marker styles through helper functions:
 
 ```python
-def process_input(input_stream) -> list[tuple[str, str]]:
-    """
-    Process input stream and return list of (filepath, content) tuples.
-    Handles special cases like placeholders and empty files.
-    """
-    current_file = None
-    current_content = []
-    files_to_process = []
-
-    for line in input_stream:
-        line = line.rstrip('\n')
-
-        if line.startswith('// '):
-            # Handle previous file if exists
-            if current_file:
-                files_to_process.append((current_file, '\n'.join(current_content)))
-                current_content = []
-
-            # Get new filepath
-            filepath = line[3:]  # Strip "// "
-
-            # Special case: Placeholder content for previous file
-            if filepath.startswith('[') and filepath.endswith(']'):
-                if files_to_process:
-                    # Replace previous file's content with placeholder
-                    prev_file = files_to_process.pop()[0]
-                    files_to_process.append((prev_file, filepath))
-                current_file = None
-            else:
-                current_file = filepath
-
-        # Regular content line
-        elif current_file:
-            current_content.append(line)
-
-    # Don't forget the last file
-    if current_file:
-        files_to_process.append((current_file, '\n'.join(current_content)))
-
-    return files_to_process
+def extract_filepath(line: str) -> str:
+    """Extract filepath from a marker line, handling both # and // syntax."""
+    if line.startswith('// '):
+        return line[3:]  # Strip "// "
+    elif line.startswith('# '):
+        return line[2:]  # Strip "# "
+    return line
 ```
 
 #### Special Cases Handling
 
 1. **Placeholder Content**
-   - When a line matches `// [...]`, it's treated as placeholder content
+   - When a line matches either `// [...]` or `# [...]`, it's treated as placeholder content
    - The placeholder replaces the content of the previous file
    - Example:
      ```text
-     // file.txt
+     // file1.txt
      // [Add content here]
+
+     # file2.txt
+     # [Implementation needed]
      ```
 
 2. **Empty Files**

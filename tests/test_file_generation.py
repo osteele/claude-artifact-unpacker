@@ -3,10 +3,16 @@ import shutil
 import subprocess
 from pathlib import Path
 import pytest
+from io import StringIO
+
+import sys
+sys.path.append(str(Path(__file__).parent.parent))
+from unpack_artifact import process_input
+
+SCRIPT_PATH = Path(__file__).parent.parent / "unpack_artifact.py"
 
 TEST_INPUTS_DIR = Path("tests/test_inputs")
 TEST_OUTPUT_DIR = Path("tests/test_output")
-SCRIPT_PATH = Path(__file__).parent.parent / "unpack_artifact.py"
 
 def setup_module():
     """Create output directory before tests"""
@@ -64,7 +70,7 @@ def test_basic_generation():
     assert result.returncode == 0
 
     # Script creates directory based on package.json name
-    project_dir = TEST_OUTPUT_DIR / "basic-test"
+    project_dir = TEST_OUTPUT_DIR /"basic-test"
 
     expected_files = {
         "package.json",
@@ -75,6 +81,8 @@ def test_basic_generation():
     created_files = get_all_files(project_dir)
     assert created_files == expected_files
 
+    # Cleanup
+    shutil.rmtree(project_dir)
 
 def test_nested_directories():
     input_file = TEST_INPUTS_DIR / "nested_dirs.txt"
@@ -92,6 +100,8 @@ def test_nested_directories():
     created_files = get_all_files(project_dir)
     assert created_files == expected_files
 
+    # Cleanup
+    shutil.rmtree(project_dir)
 
 def test_placeholders():
     input_file = TEST_INPUTS_DIR / "placeholders.txt"
@@ -115,6 +125,8 @@ def test_placeholders():
         content = f.read().strip()
         assert content == "[Insert footer component here]"
 
+    # Cleanup
+    shutil.rmtree(project_dir)
 
 def test_special_cases():
     input_file = TEST_INPUTS_DIR / "special_cases.txt"
@@ -134,6 +146,8 @@ def test_special_cases():
     created_files = get_all_files(project_dir)
     assert created_files == expected_files
 
+    # Cleanup
+    shutil.rmtree(project_dir)
 
 def test_nonexistent_input():
     input_file = TEST_INPUTS_DIR / "nonexistent.txt"
@@ -174,3 +188,71 @@ def test_stdin_input(tmp_path):
 
     created_files = get_all_files(project_dir)
     assert created_files == expected_files
+
+    # Cleanup
+    shutil.rmtree(project_dir)
+
+def test_mixed_marker_styles():
+    input_text = """// file1.txt
+content1
+
+# file2.txt
+content2
+
+// file3.txt
+content3
+
+# file4.txt
+content4
+"""
+    files = process_input(StringIO(input_text))
+
+    assert set(name for name, _ in files) == {"file1.txt", "file3.txt"}
+    assert files[0] == ("file1.txt", "content1\n\n# file2.txt\ncontent2")
+    assert files[1] == ("file3.txt", "content3\n\n# file4.txt\ncontent4")
+
+    input_text = """# file1.txt
+content1
+
+// file2.txt
+content2
+
+# file3.txt
+content3
+
+// file4.txt
+content4
+"""
+    files = process_input(StringIO(input_text))
+    assert set(name for name, _ in files) == {"file1.txt", "file3.txt"}
+    assert files[0] == ("file1.txt", "content1\n\n// file2.txt\ncontent2")
+    assert files[1] == ("file3.txt", "content3\n\n// file4.txt\ncontent4")
+
+def test_hash_style_markers():
+    input_text = """# file1.txt
+content1
+
+# file2.txt
+# [needs implementation]
+"""
+    files = process_input(StringIO(input_text))
+
+    assert set(name for name, _ in files) == {"file1.txt", "file2.txt"}
+    assert files[0] == ("file1.txt", "content1")
+    assert files[1] == ("file2.txt", "[needs implementation]")
+
+def test_markdown_content_not_treated_as_marker():
+    input_text = """// README.md
+# My Project Title
+This is a markdown file with headers.
+# Another Header
+## Subheader
+
+// src/index.js
+console.log('hello');
+"""
+    files = process_input(StringIO(input_text))
+
+    assert set(name for name, _ in files) == {"README.md", "src/index.js"}
+    assert files[0] == ("README.md", "# My Project Title\nThis is a markdown file with headers.\n# Another Header\n## Subheader")
+    assert files[1] == ("src/index.js", "console.log('hello');")

@@ -5,7 +5,7 @@
 ### 1.1. File Definition Structure
 Each file definition MUST consist of:
 1. A file path line that:
-   - MUST start with exactly `// ` (two forward slashes and a space)
+   - MUST start with either `// ` (two forward slashes and a space) or `# ` (hash and a space)
    - MUST be followed by a relative file path
    - File paths MAY contain forward slashes to indicate directory structure
    - File paths MUST NOT contain backward slashes (even on Windows)
@@ -14,13 +14,13 @@ Each file definition MUST consist of:
 
 2. Followed by exactly ONE of:
    a. Content lines where:
-      - Lines MUST NOT start with `// `
+      - Lines MUST NOT start with `// ` or `# `
       - Content MAY contain any valid text, including blank lines
       - Content MUST be terminated by either:
         * A blank line followed by another file path line
         * The end of the input
    b. A placeholder line that:
-      - MUST start with `// [`
+      - MUST start with either `// [` or `# [`
       - MUST end with `]`
       - MUST be used to indicate content to be added later
       - MUST trigger a warning to the user about needed replacement

@@ -37,49 +37,73 @@ def find_project_name(package_content):
         i += 1
     return base_name
 
-def process_input(input_stream):
-    """Process the input stream and create files/directories."""
+def is_file_marker(line: str) -> bool:
+    """Check if a line is a file marker using either # or // syntax."""
+    return (line.startswith('// ') or line.startswith('# ')) and not (
+        line.startswith('// [') or line.startswith('# [')
+    )
+
+def is_placeholder_marker(line: str) -> bool:
+    """Check if a line is a placeholder marker using either # or // syntax."""
+    return (line.startswith('// [') and line.endswith(']')) or (
+        line.startswith('# [') and line.endswith(']')
+    )
+
+def extract_filepath(line: str) -> str:
+    """Extract filepath from a marker line, handling both # and // syntax."""
+    if line.startswith('// '):
+        return line[3:]  # Strip "// "
+    elif line.startswith('# '):
+        return line[2:]  # Strip "# "
+    return line
+
+def process_input(input_stream) -> list[tuple[str, str]]:
+    """
+    Process input stream and return list of (filepath, content) tuples.
+    Handles special cases like placeholders and empty files.
+    """
     current_file = None
     current_content = []
     files_to_process = []
+    marker_style = None  # Track which marker style this file uses
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("[cyan]Processing input...", total=None)
+    for line in input_stream:
+        line = line.rstrip('\n')
 
-        for line in input_stream:
-            line = line.rstrip('\n')
+        # Detect marker style from first file marker
+        if marker_style is None and (line.startswith('// ') or line.startswith('# ')):
+            marker_style = '// ' if line.startswith('// ') else '# '
 
-            # Check for new file marker
-            if line.startswith('// '):
-                content = line[3:]  # Remove the '// ' prefix
+        # Check if this is a new file marker (must be preceded by blank line if not first)
+        is_new_file = (
+            marker_style and
+            line.startswith(marker_style) and
+            not line.startswith(marker_style + '[') and
+            (not current_file or not current_content or current_content[-1] == '')
+        )
 
-                # If this is a placeholder for the previous file
-                if content.startswith('[') and content.endswith(']'):
-                    if current_file:
-                        files_to_process.append((current_file, content))
-                        current_file = None
-                        current_content = []
-                    continue
+        if is_new_file:
+            # Handle previous file if exists
+            if current_file:
+                files_to_process.append((current_file, '\n'.join(current_content[:-1] if current_content else [])))
+                current_content = []
 
-                # Save previous file if exists
-                if current_file:
-                    files_to_process.append((current_file, '\n'.join(current_content) if current_content else ''))
-                    current_content = []
+            # Get new filepath
+            current_file = line[len(marker_style):]
 
-                current_file = content
-                progress.update(task, description=f"[cyan]Found file: {current_file}")
-                sleep(0.1)  # Add a small delay for visual effect
-
-            elif current_file:
+        # Regular content line or placeholder
+        elif current_file:
+            if marker_style and line.startswith(marker_style + '[') and line.endswith(']'):
+                # This is a placeholder for the current file
+                files_to_process.append((current_file, line[len(marker_style):]))
+                current_file = None
+                current_content = []
+            else:
                 current_content.append(line)
 
-        # Don't forget the last file
-        if current_file:
-            files_to_process.append((current_file, '\n'.join(current_content) if current_content else ''))
+    # Don't forget the last file
+    if current_file:
+        files_to_process.append((current_file, '\n'.join(current_content)))
 
     return files_to_process
 
